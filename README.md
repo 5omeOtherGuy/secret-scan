@@ -1,0 +1,81 @@
+# secret-scan
+
+`secret-scan` is a small Bash scanner for credential-like text and sensitive
+file names. It can scan a working tree, text from standard input, or file names
+from standard input. The included pre-push hook checks every outgoing commit.
+
+## Requirements
+
+Runtime: Bash 4 or newer, GNU-compatible `grep`, and Git for tree scanning or
+the pre-push hook. No runtime packages need to be installed on a typical Linux
+system.
+
+Tests additionally require Python 3 and standard Unix utilities (`mktemp`,
+`mkdir`, `rm`). On Debian or Ubuntu, install the packages with:
+
+```sh
+sudo apt-get install bash grep git python3 coreutils
+```
+
+## Install and use
+
+Clone the repository, then scan its working tree:
+
+```sh
+git clone <repository-url>
+cd secret-scan
+./secret-scan.sh
+```
+
+To enable the optional pre-push guard in another Git repository, copy
+`secret-scan.sh`, `hooks/pre-push`, and `install-git-hooks.sh` into that
+repository with the same paths, then run:
+
+```sh
+./install-git-hooks.sh
+```
+
+Alternatively, put this repository's hook in a repository that also has
+`secret-scan.sh` at its root, then run its installer. The hook scans outgoing
+commit patches and changed file names and refuses a push on a match or scanner
+error.
+
+## Configuration and modes
+
+There are no environment variables or configuration files. Pass a root path to
+scan a different tree:
+
+```sh
+./secret-scan.sh /path/to/project
+```
+
+Other modes:
+
+```sh
+printf '%s\n' 'ordinary example text' | ./secret-scan.sh --stdin
+git diff --name-only | ./secret-scan.sh --names
+```
+
+Exit status is 0 for clean, 1 for a detected match, and 2 for a scanner error.
+Callers should treat status 2 as a failure.
+
+## Limits and caveats
+
+Detection uses a built-in set of patterns and is not comprehensive. It may miss
+new credential formats and may flag ordinary text (in particular words starting
+with `sk-` followed by 20 or more allowed characters). It does not contact
+credential providers or determine whether a value is active. The tree scan
+checks tracked file names and recursively scans readable working-tree content,
+excluding `.git` and this scanner script. It is not a substitute for reviewing
+history or using a maintained, broader secret-detection tool.
+
+## Tests
+
+Run the test suite with:
+
+```sh
+bash tests/test_secret_scan.sh
+```
+
+The tests construct all credential-shaped inputs at runtime, discard scanner
+output, and use a temporary `HOME` and XDG configuration/cache directories.
