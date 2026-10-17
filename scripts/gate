@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# scripts/gate: everything a change must pass. CI runs exactly this command.
+# Syntax-checks every tracked Bash script, runs the test suite and scans the
+# repository for secrets. Quiet on success; prints only the failing step's
+# output on failure. Hermetic: no network, no credentials, and no user or
+# system Git configuration (HOME and XDG directories are temporary).
+set -u
+cd "$(dirname "$0")/.." || exit 2
+GATE_TMP=$(mktemp -d) || exit 2
+trap 'rm -rf "$GATE_TMP"' EXIT
+export HOME="$GATE_TMP/home" XDG_CONFIG_HOME="$GATE_TMP/config" XDG_CACHE_HOME="$GATE_TMP/cache"
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+fail=0
+step() { # label command...
+  local label=$1 out; shift
+  if ! out=$("$@" 2>&1); then
+    printf 'gate: FAILED: %s\n%s\n' "$label" "$out" >&2
+    fail=1
+  fi
+}
+
+# Tracked files, NUL-delimited so no name is quoted or split.
+git ls-files -z > "$GATE_TMP/files" || { echo "gate: FAILED: git ls-files" >&2; exit 2; }
+while IFS= read -r -d '' f; do
+  if [ ! -f "$f" ]; then
+    printf 'gate: FAILED: tracked file missing from the working tree: %s\n' "$f" >&2; fail=1; continue
+  fi
+  if [ ! -r "$f" ]; then
+    printf 'gate: FAILED: cannot read %s\n' "$f" >&2; fail=1; continue
+  fi
+  first=
+  IFS= read -r first < "$f" || true   # empty or newline-less files are fine
+  case $first in
+    '#!/usr/bin/env bash'*|'#!/bin/bash'*) step "bash -n $f" bash -n "$f";;
+  esac
+done < "$GATE_TMP/files"
+step 'tests (bash tests/test_secret_scan.sh)' bash tests/test_secret_scan.sh
+step 'secret scan (./secret-scan.sh)' ./secret-scan.sh
+
+[ $fail -eq 0 ] && echo "gate: ok"
+exit $fail
