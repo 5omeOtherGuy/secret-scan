@@ -6,13 +6,15 @@
 # is resolved relative to the pushed repository's root, so the repo must carry
 # secret-scan.sh; a missing or non-executable scanner refuses the push.
 #
-# For every pushed ref this walks every outgoing commit (remote..local, or
-# origin/main..local for a new branch) and scans each commit's own patch and
-# changed file names. A secret added and later deleted is still caught because
-# the commit that added it is inspected.
+# For every pushed ref this walks every outgoing commit (remote..local; for a
+# new branch, <remote>/HEAD..local when the pushed-to remote's default branch
+# is known locally, else the branch's full history) and scans each commit's own
+# patch and changed file names. A secret added and later deleted is still
+# caught because the commit that added it is inspected.
 set -u
 set -o pipefail
 
+REMOTE=${1:-}   # remote name, or the URL when pushing to a URL
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
   echo "pre-push: not inside a git repository; refusing" >&2; exit 1; }
 SCAN="$REPO_ROOT/secret-scan.sh"
@@ -54,11 +56,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     refuse "$local_ref" "$local_sha" "scanner error: scanner missing or not executable: $SCAN"
     continue
   fi
-  if [ "$remote_sha" = "$ZERO" ]; then              # new branch: diff from origin/main when it exists
-    if git rev-parse --verify -q origin/main >/dev/null 2>&1; then
-      base=$(git rev-parse origin/main)
-    else
-      base=$EMPTY_TREE
+  if [ "$remote_sha" = "$ZERO" ]; then              # new branch
+    # Commits already on the pushed-to remote's default branch are not
+    # outgoing. Unknown default (no <remote>/HEAD, or a URL): full history.
+    base=$EMPTY_TREE
+    if [ -n "$REMOTE" ] && default=$(git rev-parse --verify -q "refs/remotes/$REMOTE/HEAD^{commit}" 2>/dev/null); then
+      base=$default
     fi
   else
     base=$remote_sha

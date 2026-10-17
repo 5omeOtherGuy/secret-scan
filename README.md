@@ -6,12 +6,13 @@ from standard input. The included pre-push hook checks every outgoing commit.
 
 ## Requirements
 
-Runtime: Bash 4 or newer, GNU-compatible `grep`, and Git for tree scanning or
-the pre-push hook. No runtime packages need to be installed on a typical Linux
-system.
+Runtime: Bash 4 or newer, GNU-compatible `grep`, and Git for the pre-push
+hook and for scanning a Git working tree. No runtime packages need to be
+installed on a typical Linux system.
 
-Tests additionally require Python 3 and standard Unix utilities (`mktemp`,
-`mkdir`, `rm`). On Debian or Ubuntu, install the packages with:
+Tests additionally require Git, Python 3 and standard Unix utilities
+(`mktemp`, `mkdir`, `cp`, `mv`, `chmod`, `rm`). On Debian or Ubuntu, install
+the packages with:
 
 ```sh
 sudo apt-get install bash grep git python3 coreutils
@@ -73,8 +74,15 @@ new credential formats and may flag ordinary text (in particular words starting
 with `sk-` followed by 20 or more allowed characters). It does not contact
 credential providers or determine whether a value is active. The tree scan
 checks tracked file names and recursively scans readable working-tree content,
-excluding `.git` and this scanner script. It is not a substitute for reviewing
-history or using a maintained, broader secret-detection tool.
+excluding `.git` and this scanner script. When the path is not inside a Git
+working tree (or Git is not installed), it checks the names of all files on
+disk instead and says so on standard error; a failing file listing is a
+scanner error (status 2). The pre-push hook scans every outgoing commit; for a
+new branch that means the commits missing from the pushed-to remote's default
+branch (`<remote>/HEAD`), or the branch's whole history when that is not known
+locally (`git remote set-head <remote> --auto` records it). The scanner is not
+a substitute for reviewing history or using a maintained, broader
+secret-detection tool.
 
 ## Tests
 
