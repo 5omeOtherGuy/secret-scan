@@ -9,7 +9,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: gate-${{ github.event.pull_request.number || github.ref }}
+  # PR runs share a group per PR and cancel superseded runs; every main push
+  # gets its own group so no pending main run is replaced.
+  group: gate-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
