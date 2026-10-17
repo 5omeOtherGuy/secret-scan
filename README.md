@@ -22,23 +22,30 @@ sudo apt-get install bash grep git python3 coreutils
 Clone the repository, then scan its working tree:
 
 ```sh
-git clone <repository-url>
+git clone https://github.com/5omeOtherGuy/secret-scan
 cd secret-scan
 ./secret-scan.sh
 ```
 
-To enable the optional pre-push guard in another Git repository, copy
-`secret-scan.sh`, `hooks/pre-push`, and `install-git-hooks.sh` into that
-repository with the same paths, then run:
+To enable the pre-push guard in another Git repository, copy
+`secret-scan.sh`, `hooks/pre-push`, and `install-git-hooks.sh` into the top
+level of that repository with the same paths (commit them so other clones
+get the scanner too), then run the installer from that repository's copy:
 
 ```sh
+cd /path/to/your-repo
+mkdir -p hooks
+cp /path/to/secret-scan/secret-scan.sh /path/to/secret-scan/install-git-hooks.sh .
+cp /path/to/secret-scan/hooks/pre-push hooks/
 ./install-git-hooks.sh
 ```
 
-Alternatively, put this repository's hook in a repository that also has
-`secret-scan.sh` at its root, then run its installer. The hook scans outgoing
-commit patches and changed file names and refuses a push on a match or scanner
-error.
+The installer writes the hook into the hooks directory of the repository it
+sits in (`git rev-parse --git-path hooks`, so linked worktrees and
+`core.hooksPath` are honoured), whatever the current directory is. It refuses
+when `hooks/pre-push` or `secret-scan.sh` is missing or the scanner is not
+executable. The hook scans outgoing commit patches and changed file names and
+refuses a push on a match or scanner error.
 
 ## Configuration and modes
 
