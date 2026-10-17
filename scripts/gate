@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# scripts/gate: everything a change must pass. CI runs exactly this command.
+# Syntax-checks every tracked Bash script, runs the test suite and scans the
+# repository for secrets. Quiet on success; prints only the failing step's
+# output on failure. Hermetic: no network, no credentials, no real HOME.
+set -u
+cd "$(dirname "$0")/.." || exit 2
+fail=0
+step() { # label command...
+  local label=$1 out; shift
+  if ! out=$("$@" 2>&1); then
+    printf 'gate: FAILED: %s\n%s\n' "$label" "$out" >&2
+    fail=1
+  fi
+}
+
+scripts=$(git ls-files) || { echo "gate: FAILED: git ls-files" >&2; exit 2; }
+while IFS= read -r f; do
+  [ -f "$f" ] || continue
+  case $(head -n 1 "$f") in
+    '#!/usr/bin/env bash'*|'#!/bin/bash'*) step "bash -n $f" bash -n "$f";;
+  esac
+done <<< "$scripts"
+step 'tests (bash tests/test_secret_scan.sh)' bash tests/test_secret_scan.sh
+step 'secret scan (./secret-scan.sh)' ./secret-scan.sh
+
+[ $fail -eq 0 ] && echo "gate: ok"
+exit $fail
