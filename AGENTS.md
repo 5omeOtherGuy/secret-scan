@@ -2,11 +2,12 @@
 
 ## Profile
 - Purpose: dependency-free credential scanner with a fail-closed git pre-push hook
-- Stage: pre-release (repository standard 2026-10-17)
+- Stage: pre-release (repository standard 2026-10-18)
 - Gate: `scripts/gate` (CI job `gate`)
 - Landing: direct to main after a green gate; agents land: yes
 - Release: none; agents release: no
 - Outside issues and PRs: agents triage; outside PRs merge: owner approves
+- Sensitive paths: `secret-scan.sh`, `hooks/`, `install-git-hooks.sh`, `scripts/gate`, `.githooks/`, `.agents/`, `.github/workflows/`, `.github/dependabot.yml`, `AGENTS.md`
 
 Deliberate deviations from the standard: none.
 
@@ -26,7 +27,7 @@ Deliberate deviations from the standard: none.
 1. Enable the hooks once per checkout: `git config core.hooksPath .githooks` (`.agents/setup` does it).
 2. `git fetch origin && git rebase origin/main`, then `scripts/gate`.
 3. `git push origin HEAD:main`. The pre-push hook runs the gate again. If the push is rejected, repeat from step 2.
-4. Use a PR instead for public-interface changes (CLI modes, arguments, exit codes, output that callers parse, the hook's or installer's contract), CI or release configuration, work spanning several sessions, and anything another person sends. Squash-merge it once the `gate` run on the head commit concluded `success`: `gh pr merge <n> --squash --delete-branch --match-head-commit <sha>`. CI, release and public-interface changes need an independent review first.
+4. Use a PR instead for public-interface changes (CLI modes, arguments, exit codes, output that callers parse, the hook's or installer's contract), CI or release configuration, changes to the sensitive paths in the profile, work spanning several sessions, and anything another person sends. Squash-merge it once the `gate` run on the head commit concluded `success`: `gh pr merge <n> --squash --delete-branch --match-head-commit <sha>`. CI, release, public-interface and sensitive-path changes need an independent review first, recorded on the PR against the reviewed head; a later push needs a new one.
 5. Record user-visible changes under `## [Unreleased]` in `CHANGELOG.md`.
 6. Commit subjects follow Conventional Commits. Commit as `5omeOtherGuy <268151429+5omeOtherGuy@users.noreply.github.com>`. Personal addresses and `Co-authored-by` trailers carrying them must not reach this public repository, including squash commits (pass `--author-email` and an explicit `--body`).
 
