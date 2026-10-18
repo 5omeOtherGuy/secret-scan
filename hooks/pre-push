@@ -33,7 +33,8 @@ refuse() { # ref sha why [output]
 scan_commit() {
   local sha=$1 out rc
   # (a) the file names the commit touches, against the forbidden-name pattern.
-  out=$(git show --format= --name-only "$sha" 2>&1 | "$SCAN" --names 2>&1); rc=$?
+  # NUL-delimited (-z) so Git does not quote unusual names, then one per line.
+  out=$(git show -z --format= --name-only "$sha" 2>&1 | tr '\0' '\n' | "$SCAN" --names 2>&1); rc=$?
   case $rc in
     0) ;;
     1) refuse "$local_ref" "$sha" "forbidden file name in commit $sha" "$out"; return 1;;

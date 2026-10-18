@@ -19,3 +19,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The pre-push hook bases a new branch on the default branch of the remote
   being pushed to, not always on `origin/main`, and scans the branch's full
   history when that default branch is not known locally.
+- Tree mode and the pre-push hook catch forbidden file names that Git quotes
+  in its output, such as names with non-ASCII characters (`schlüssel.pem`),
+  quotes, tabs or newlines, and names that are not valid UTF-8. Before, such
+  files passed as clean ([#3](https://github.com/5omeOtherGuy/secret-scan/issues/3)).
