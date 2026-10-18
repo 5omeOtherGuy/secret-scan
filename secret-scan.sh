@@ -39,7 +39,8 @@ if [ "$MODE" = stdin ]; then
 fi
 
 if [ "$MODE" = names ]; then
-  scan_grep "forbidden file name" -E -- "$FILES" -
+  # LC_ALL=C: a name that is not valid UTF-8 still matches '.*'.
+  LC_ALL=C scan_grep "forbidden file name" -E -- "$FILES" -
   rc=$?
   [ $rc -eq 0 ] && echo "secret-scan: clean"
   exit $rc
@@ -49,9 +50,12 @@ ROOT=${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}
 [ -e "$ROOT" ] || { echo "secret-scan: scanner error: no such file or directory: $ROOT" >&2; exit 2; }
 # File names: tracked files inside a Git working tree; otherwise (no Git
 # repository, or git not installed) every file found on disk, excluding .git.
-# A failing listing is a scanner error, never a silent skip.
+# A failing listing is a scanner error, never a silent skip. Git names are
+# listed NUL-delimited so that Git does not quote them (non-ASCII, quotes, tabs,
+# newlines), then put one per line; a name with a newline still ends in its own
+# last line, which is what the pattern checks.
 if [ "$(git -C "$ROOT" rev-parse --is-inside-work-tree 2>/dev/null)" = true ]; then
-  names=$(git -C "$ROOT" ls-files) || {
+  names=$(set -o pipefail; git -C "$ROOT" ls-files -z | tr '\0' '\n') || {
     echo "secret-scan: scanner error: git ls-files failed in $ROOT" >&2; exit 2; }
 elif [ -d "$ROOT" ]; then
   echo "secret-scan: $ROOT is not a Git working tree; checking the names of all files on disk" >&2
@@ -60,7 +64,7 @@ elif [ -d "$ROOT" ]; then
 else
   names=$ROOT
 fi
-printf '%s\n' "$names" | scan_grep "forbidden file name" -E -- "$FILES" -
+printf '%s\n' "$names" | LC_ALL=C scan_grep "forbidden file name" -E -- "$FILES" -
 rc=$?
 if [ $rc -eq 0 ]; then
   grep -rInE --exclude-dir=.git --exclude=secret-scan.sh -- "$PAT" "$ROOT"

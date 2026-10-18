@@ -150,6 +150,16 @@ expect 'tree: clean Git working tree' 0 "$(scan_tree "$t")"
 put "$t" deploy.pem 'not a key' 'pem'
 expect 'tree: tracked forbidden file name' 1 "$(scan_tree "$t")"
 q git -C "$t" rm -q deploy.pem && q git -C "$t" commit -m 'rm pem'
+# Names Git would quote in its default output: non-ASCII, a quote, a tab, a
+# newline, and bytes that are not valid UTF-8 (scanned in a UTF-8 locale).
+odd_names=('schlüssel.pem' 'quote"d.key' $'tab\tname.token' $'line\nauth.json' $'latin1-\xfc.pem')
+put "$t" 'notizen-ü.txt' 'ordinary example text' 'umlaut'
+expect 'tree: ordinary non-ASCII file name' 0 "$(LC_ALL=C.UTF-8 scan_tree "$t")"
+for n in "${odd_names[@]}"; do
+  put "$t" "$n" 'not a key' 'odd name'
+  expect "tree: forbidden file name $(printf %q "$n")" 1 "$(LC_ALL=C.UTF-8 scan_tree "$t")"
+  q git -C "$t" rm -q -- "$n" && q git -C "$t" commit -m 'rm odd name'
+done
 put "$t" config.txt "token=$v_ghp" 'key'
 expect 'tree: credential-like content' 1 "$(scan_tree "$t")"
 q git -C "$t" rm -q config.txt && q git -C "$t" commit -m 'rm key'
@@ -220,6 +230,11 @@ q git -C "$r" reset --hard "$clean_sha"
 put "$r" deploy.pem 'not a key' 'add pem'
 expect 'hook: forbidden file name is refused' 1 "$(push "$r" origin +main)"
 q git -C "$r" reset --hard "$clean_sha"
+for n in "${odd_names[@]}"; do
+  put "$r" "$n" 'not a key' 'add odd name'
+  expect "hook: forbidden file name $(printf %q "$n") is refused" 1 "$(LC_ALL=C.UTF-8 push "$r" origin +main)"
+  q git -C "$r" reset --hard "$clean_sha"
+done
 
 put "$r" more.txt 'more ordinary text' 'more'
 mv "$r/secret-scan.sh" "$G/scanner.bak"
