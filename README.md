@@ -1,8 +1,10 @@
+Archived 2026-11-20: this repository is retired. Source, branches, tags and existing releases are retained for reference.
+
 # secret-scan
 
 Dependency-free credential scanner with a fail-closed git pre-push hook.
 
-Status: pre-release. Others may try it, but nothing is promised yet: patterns, options and output can change without notice.
+Status: archived. Retained for reference; no further development is planned.
 
 [![gate](https://github.com/5omeOtherGuy/secret-scan/actions/workflows/gate.yml/badge.svg?branch=main)](https://github.com/5omeOtherGuy/secret-scan/actions/workflows/gate.yml)
 [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
